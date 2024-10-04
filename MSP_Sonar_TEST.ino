@@ -1,70 +1,81 @@
+#include <Wire.h>
+#include <MSP.h>
+#include "MS5611.h"
+#include "ms4525do.h"
 
 
+bfs::Ms4525do pres;
+
+byte received;
+
+float diffPressurePa;
+int16_t temp;
+
+
+int distances = 0;
+int distance = 0;
+
+unsigned char buffer_RTT[4] = { 0 };
+uint8_t CS;
+#define COM 0x55
+int Distance = 0;
+
+MSP msp;
+
+MS5611 MS5611(0x77);
 
 void setup() {
-Serial.begin(115200);
-Serial1.begin(115200);
+  Serial.begin(115200);
+  Serial1.begin(115200);
+  Serial2.begin(115200);
+  msp.begin(Serial2);
+  Wire.begin(22, 23);  //  adjust ESP32 pins if needed
+  pres.Config(&Wire, 0x28, 1.0f, -1.0f);
 }
-
-
-
-
-
 
 void loop() {
-// Define payload arrays
-uint8_t payload1[] = {255, 130, 0, 0, 0};
-uint8_t payload2[] = {255, 143, 0, 0, 0};
 
-// Send MSP V2 message for SENSOR_RANGEFINDER
-sendMSPMessage(0x1F01, payload1, sizeof(payload1));
+  MS5611.read();
+  Serial.print("T:\t");
+  Serial.print(MS5611.getTemperature(), 2);
+  Serial.print("\tP:\t");
+  Serial.print(MS5611.getPressure(), 2);
+  Serial.println();
 
-// Send MSP V2 message for SENSOR_OPTIC_FLOW
-sendMSPMessage(0x1F02, payload2, sizeof(payload2));
 
-delay(1000); // Delay 1 second before sending the next message
-}
 
-void sendMSPMessage(uint16_t function, uint8_t payload[], uint16_t payloadSize) {
-// Start MSP V2 message with header
-Serial1.write('$');
-Serial1.write('X');
-Serial1.write('<');
 
-// Send function code
-Serial1.write((uint8_t)function);
-Serial1.write((uint8_t)(function >> 8));
 
-// Send payload size
-Serial1.write((uint8_t)payloadSize);
-Serial1.write((uint8_t)(payloadSize >> 8));
+  Serial1.write(COM);
+  if (Serial1.available() > 0) {
+    delay(1000);
+    if (Serial1.read() == 0xff) {
+      buffer_RTT[0] = 0xff;
+      for (int i = 1; i < 4; i++) {
+        buffer_RTT[i] = Serial1.read();
+      }
+      CS = buffer_RTT[0] + buffer_RTT[1] + buffer_RTT[2];
+      if (buffer_RTT[3] == CS) {
+        distance = (buffer_RTT[1] << 8) + buffer_RTT[2];
+        distances = (distance / 10);
+      }
+    }
+  }
 
-// Send payload
-for (uint16_t i = 0; i < payloadSize; i++) {
-Serial1.write(payload[i]);
-}
 
-// Calculate and send checksum
-uint8_t checksum = 0;
-checksum ^= '<';
-checksum ^= (uint8_t)function;
-checksum ^= (uint8_t)(function >> 8);
-checksum ^= (uint8_t)payloadSize;
-checksum ^= (uint8_t)(payloadSize >> 8);
-for (uint16_t i = 0; i < payloadSize; i++) {
-checksum ^= payload[i];
-}
-Serial1.write(checksum);
+ if (pres.Read()) {
+    Serial.print(pres.pres_pa(), 6);
+    Serial.print("\t");
+    Serial.print(pres.die_temp_c(), 6);
+    Serial.print("\n");
+ }
 
-// Print the sent message to serial monitor
-Serial.print("Sent MSP V2 Message: < Function: 0x");
-Serial.print(function, HEX);
-Serial.print(" Payload : ");
-for (uint16_t i = 0; i < payloadSize; i++) {
-Serial.print(payload[i]);
-Serial.print(" ");
-}
-Serial.print(" Payload Size: ");
-Serial.print(payloadSize);
-Serial.println(" bytes");
+  uint8_t sonarrange[] = { 255, 130 };                                                        //quality,range,0,0,0
+  uint8_t barorange[] = { 1, millis(), MS5611.getPressure(), (MS5611.getTemperature(), 2) };  //quality,range,0,0,0
+  uint8_t speed[] = { 1, millis(), pres.pres_pa(), pres.die_temp_c() };
+
+
+  msp.send(0x1F01, &sonarrange, sizeof(sonarrange));
+  msp.send(0x1F05, &barorange, sizeof(barorange));
+  msp.send(0x1F06, &speed, sizeof(speed));
 }

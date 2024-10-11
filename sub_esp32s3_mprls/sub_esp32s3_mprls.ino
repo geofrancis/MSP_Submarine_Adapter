@@ -2,7 +2,7 @@
 #include <MSP.h>
 #include "Adafruit_MPRLS.h"
 #include "ms4525do.h"
-
+#include <HardwareSerial.h>
 
 
 
@@ -63,16 +63,8 @@ void loop() {
   sonar();
   pressure();
   speed();
+  MSPsend();
 
-  uint8_t sonarrange[] = { 255, distances };
-  uint8_t barorange[] = { 1, millis(), pressure_hPa, (0) };
-  uint8_t speed[] = { 1, millis(), pres.pres_pa(), pres.die_temp_c() };
-
-  msp.send(0x1F01, &sonarrange, sizeof(sonarrange));
-  msp.send(0x1F05, &barorange, sizeof(barorange));
-  msp.send(0x1F06, &speed, sizeof(speed));
-  Serial.println("loop");
-  delay(100);
 }
 
 
@@ -117,4 +109,19 @@ void speed() {
     Serial.print(pres.die_temp_c(), 6);
     Serial.print("\n");
   }
+}
+
+void MSPsend(){
+
+
+  uint8_t sonarrange[] = { 255, distances };
+  uint8_t barorange[] = { 1, millis(), pressure_hPa, (0) };
+  uint8_t speed[] = { 1, millis(), pres.pres_pa(), pres.die_temp_c() };
+
+  msp.send(0x1F01, &sonarrange, sizeof(sonarrange));
+  msp.send(0x1F05, &barorange, sizeof(barorange));
+  msp.send(0x1F06, &speed, sizeof(speed));
+  //Serial.println("loop");
+  delay(100);
+
 }

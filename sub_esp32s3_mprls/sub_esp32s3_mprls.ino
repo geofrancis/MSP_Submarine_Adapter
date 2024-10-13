@@ -9,7 +9,7 @@
 
 MSP msp;
 
-// You dont *need* a reset and EOC pin for most uses, so we set to -1 and don't connect
+
 #define RESET_PIN -1  // set to any GPIO pin # to hard-reset on begin()
 #define EOC_PIN -1    // set to any GPIO pin to read end-of-conversion by pin
 Adafruit_MPRLS mpr = Adafruit_MPRLS(RESET_PIN, EOC_PIN);
@@ -36,14 +36,13 @@ float pressure_hPa = 0;
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin(1, 2);  //  adjust ESP32 pins if needed
+  Wire.begin(1, 2);  
 
 
   delay(3000);
   Serial1.begin(115200, SERIAL_8N1, 3, 4);
   Serial.print("Sonar Serial");
 
-  // And configure MySerial1 on pins RX=D9, TX=D10
   Serial2.begin(115200, SERIAL_8N1, 5, 6);
   Serial.print("Serial2");
   msp.begin(Serial2);

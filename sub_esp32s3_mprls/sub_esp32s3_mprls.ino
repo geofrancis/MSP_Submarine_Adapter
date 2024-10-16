@@ -83,7 +83,7 @@ void sonar() {
         distances = (distance / 10);
         Serial.print("Serial2 ");
         Serial.println(distance);
-        uint8_t sonarrange[] = { 255, distances };
+       
        
       }
     }
